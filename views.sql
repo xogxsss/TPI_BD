@@ -5,7 +5,7 @@
 
 -- =====================================================================
 -- 1. VISTA: vw_productos_vigentes
--- Descripción: Expone los productos activos de la tienda junto con su categoría.
+-- Expone los productos activos junto con su categoría.
 -- =====================================================================
 CREATE OR REPLACE VIEW vw_productos_vigentes AS
 SELECT 
@@ -22,11 +22,9 @@ WHERE p.activo = TRUE;
 
 -- =====================================================================
 -- 2. VISTA: vw_pedidos_cliente_segura
--- Descripción: Relaciona los pedidos con los datos de sus clientes.
--- CRITERIO DE SEGURIDAD Y PRIVACIDAD: Se omite explícitamente la columna 
--- 'direccion' (datos personales sensibles) de la tabla cliente. 
--- Esto permite otorgar permisos de SELECT exclusivos sobre esta vista 
--- a roles de reportes sin exponer información privada ni la tabla base.
+-- Relaciona pedidos con datos de clientes.
+-- Se omite 'direccion' para permitir acceso a roles
+-- de reportes sin exponer información personal de la tabla base.
 -- =====================================================================
 CREATE OR REPLACE VIEW vw_pedidos_cliente_segura AS
 SELECT 
@@ -43,8 +41,7 @@ INNER JOIN cliente c ON p.id_cliente = c.id_cliente;
 
 -- =====================================================================
 -- 3. VISTA: vw_detalle_pedido_completo
--- Descripción: Muestra el desglose de los ítems de un pedido incorporando
--- el nombre actual del producto, la cantidad, el precio histórico y el subtotal.
+-- Desglose de ítems de un pedido con nombre del producto y subtotal.
 -- =====================================================================
 CREATE OR REPLACE VIEW vw_detalle_pedido_completo AS
 SELECT 
@@ -60,13 +57,10 @@ INNER JOIN producto prod ON dp.id_producto = prod.id_producto;
 
 --------------------------------------------------------------------------------
 -- VERIFICACIÓN DE EQUIVALENCIA DE VISTAS (EXCEPT)
--- Criterio: Ambas direcciones de comparación deben retornar exactamente 0 filas.
+-- Ambas direcciones deben retornar 0 filas.
 --------------------------------------------------------------------------------
 
--- -----------------------------------------------------------------------------
--- Verificación 1: vw_productos_vigentes vs Consulta Nativa
--- -----------------------------------------------------------------------------
--- Dirección A (Vista menos Consulta Nativa)
+-- Verificación 1: vw_productos_vigentes
 SELECT * FROM vw_productos_vigentes
 EXCEPT
 SELECT 
@@ -75,7 +69,6 @@ FROM producto p
 INNER JOIN categoria c ON p.id_categoria = c.id_categoria
 WHERE p.activo = TRUE;
 
--- Dirección B (Consulta Nativa menos Vista)
 SELECT 
     p.id_producto, p.nombre, p.precio_lista, p.stock, c.id_categoria, c.nombre
 FROM producto p
@@ -85,9 +78,7 @@ EXCEPT
 SELECT * FROM vw_productos_vigentes;
 
 
--- -----------------------------------------------------------------------------
--- Verificación 2: vw_pedidos_cliente_segura vs Consulta Nativa
--- -----------------------------------------------------------------------------
+-- Verificación 2: vw_pedidos_cliente_segura
 SELECT * FROM vw_pedidos_cliente_segura
 EXCEPT
 SELECT 
@@ -103,18 +94,18 @@ EXCEPT
 SELECT * FROM vw_pedidos_cliente_segura;
 
 
--- -----------------------------------------------------------------------------
--- Verificación 3: vw_detalle_pedido_completo vs Consulta Nativa
--- -----------------------------------------------------------------------------
+-- Verificación 3: vw_detalle_pedido_completo
 SELECT * FROM vw_detalle_pedido_completo
 EXCEPT
 SELECT 
-    dp.id_pedido, dp.id_producto, prod.nombre, dp.cantidad, dp.precio_unitario_historico, (dp.cantidad * dp.precio_unitario_historico)
+    dp.id_pedido, dp.id_producto, prod.nombre, dp.cantidad, dp.precio_unitario_historico,
+    (dp.cantidad * dp.precio_unitario_historico)
 FROM detalle_pedido dp
 INNER JOIN producto prod ON dp.id_producto = prod.id_producto;
 
 SELECT 
-    dp.id_pedido, dp.id_producto, prod.nombre, dp.cantidad, dp.precio_unitario_historico, (dp.cantidad * dp.precio_unitario_historico)
+    dp.id_pedido, dp.id_producto, prod.nombre, dp.cantidad, dp.precio_unitario_historico,
+    (dp.cantidad * dp.precio_unitario_historico)
 FROM detalle_pedido dp
 INNER JOIN producto prod ON dp.id_producto = prod.id_producto
 EXCEPT
@@ -122,43 +113,30 @@ SELECT * FROM vw_detalle_pedido_completo;
 
 
 --------------------------------------------------------------------------------
--- CONFIGURACIÓN DE SEGURIDAD: Rol para Reportes Seguros
--- Justificación: Implementa el principio de privilegio mínimo, permitiendo 
--- consultar únicamente la vista segura que omite datos personales sensibles (PII).
+-- CONFIGURACIÓN DE SEGURIDAD: Rol para reportes seguros
+-- Implementa el principio de privilegio mínimo.
 --------------------------------------------------------------------------------
 
--- 1. Crear el rol de reportes en el motor (ejecutar solo si no existe)
+-- Crear el rol (ejecutar solo si no existe)
 CREATE ROLE rol_reportes;
 
--- 2. Otorgar permisos de conexión a la base de datos y uso del esquema público
+-- Permisos de conexión y uso del esquema público
 GRANT CONNECT ON DATABASE foodstore_dev TO rol_reportes;
 GRANT USAGE ON SCHEMA public TO rol_reportes;
 
--- 3. Otorgar permisos de lectura exclusivamente sobre la vista segura
--- (Esto permite consultar los pedidos y clientes sin dar acceso a las tablas base)
+-- Lectura exclusiva sobre la vista segura
 GRANT SELECT ON vw_pedidos_cliente_segura TO rol_reportes;
 
 
 --------------------------------------------------------------------------------
 -- PARTE C: VISTA MATERIALIZADA
 -- mv_facturacion_categoria_mes — Facturación por categoría y mes
--- Materializa el resultado de la consulta analítica pesada (4 JOINs + SUM/COUNT)
--- para eliminar el costo de cómputo en cada lectura de reporte.
 --------------------------------------------------------------------------------
 
 -- =====================================================================
 -- 4. VISTA MATERIALIZADA: mv_facturacion_categoria_mes
--- Descripción: Almacena físicamente la facturación agregada por categoría
--- y mes calendario. Permite consultas de reporte en tiempo ~0 ms en lugar
--- de ejecutar el JOIN masivo categoria→producto→detalle_pedido→pedido
--- en cada acceso.
---
--- Decisión de diseño:
---   • WITH DATA: materializa los datos de inmediato al crearse.
---   • Sin WITH NO DATA: garantiza que la vista esté lista para consultas
---     desde el primer segundo de su existencia.
---   • Columnas anio + mes como enteros: simplifican el filtrado temporal
---     (WHERE anio = 2026 AND mes = 9) y son la base del índice único.
+-- Almacena físicamente la facturación agregada por categoría y mes
+-- calendario, eliminando el costo del JOIN masivo en cada lectura.
 -- =====================================================================
 CREATE MATERIALIZED VIEW mv_facturacion_categoria_mes AS
 SELECT
@@ -170,9 +148,9 @@ SELECT
     SUM(dp.cantidad)                                               AS total_unidades,
     SUM(dp.cantidad * dp.precio_unitario_historico)                AS facturacion_total
 FROM categoria cat
-INNER JOIN producto     pr  ON pr.id_categoria  = cat.id_categoria
-INNER JOIN detalle_pedido dp ON dp.id_producto   = pr.id_producto
-INNER JOIN pedido       ped ON ped.id_pedido     = dp.id_pedido
+INNER JOIN producto      pr  ON pr.id_categoria  = cat.id_categoria
+INNER JOIN detalle_pedido dp  ON dp.id_producto   = pr.id_producto
+INNER JOIN pedido        ped ON ped.id_pedido     = dp.id_pedido
 WHERE cat.activo = TRUE
   AND pr.activo  = TRUE
 GROUP BY
@@ -185,35 +163,20 @@ WITH DATA;
 
 -- =====================================================================
 -- ÍNDICE ÚNICO: idx_mv_facturacion_uk
--- Descripción: Índice B-Tree único sobre las columnas de agrupación
--- (anio, mes, id_categoria). Es obligatorio para poder ejecutar el
--- comando REFRESH MATERIALIZED VIEW CONCURRENTLY, que requiere al menos
--- un índice único sobre la vista materializada.
---
--- Decisión de diseño:
---   • La unicidad de la combinación (anio, mes, id_categoria) es una
---     invariante del negocio: solo puede existir un registro de
---     facturación por categoría por mes.
---   • El orden de columnas sigue el patrón de acceso más frecuente:
---     filtro por año → filtro por mes → filtro por categoría.
---   • Habilita REFRESH CONCURRENTLY: permite actualizar la vista sin
---     bloquear lecturas (sin AccessExclusiveLock sobre la relación).
+-- Requerido por REFRESH CONCURRENTLY; acelera filtros por año/mes/categoría.
 -- =====================================================================
 CREATE UNIQUE INDEX idx_mv_facturacion_uk
     ON mv_facturacion_categoria_mes (anio, mes, id_categoria);
 
 
 -- =====================================================================
--- REFRESCO MANUAL (Mantenimiento)
--- Sintaxis habilitada gracias al índice único idx_mv_facturacion_uk.
--- Ejecutar una vez al día desde un cron job (ver informe_mediciones.md).
+-- REFRESCO MANUAL
 -- =====================================================================
 -- REFRESH MATERIALIZED VIEW CONCURRENTLY mv_facturacion_categoria_mes;
 
 
 -- =====================================================================
--- VERIFICACIÓN DE CONTENIDO (Consulta de reporte sobre la MV)
--- Tiempo esperado: < 1 ms (acceso directo a datos materializados).
+-- CONSULTA DE REPORTE SOBRE LA MV
 -- =====================================================================
 -- SELECT anio, mes, categoria_nombre, total_pedidos, facturacion_total
 -- FROM mv_facturacion_categoria_mes
