@@ -44,6 +44,14 @@ El proyecto abarca el ciclo completo de ingeniería sobre la base de datos: mode
 
 - **specs/**: Carpeta que implementa el enfoque Spec-Driven Development (Kiro), organizando cada requerimiento de optimización en documentos de requisitos (sintaxis EARS), arquitectura y planes de ejecución secuenciales.
 
+### Unidad 5 — Administración y Seguridad (food_store_tp_u5/)
+
+Para mantener la inmutabilidad de los scripts y pruebas consolidadas de las Unidades 1 a 4 (`schema.sql`, `data.sql`, `queries.sql`, etc.), la Unidad 5 se encapsuló íntegramente dentro de la carpeta aislada `food_store_tp_u5/`, con la estructura estricta exigida por la cátedra:
+
+- **`food_store_tp_u5/sql/roles.sql`**: Script de creación y configuración de roles de seguridad.
+- **`food_store_tp_u5/docs/`**: Documentación técnica de la unidad.
+- **`food_store_tp_u5/BITACORA.md`**: Bitácora de decisiones y cambios aplicados durante el desarrollo de la Unidad 5.
+
 ---
 
 ## 3. Guía de Reproducción del Entorno

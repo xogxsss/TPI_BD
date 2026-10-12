@@ -1,4 +1,4 @@
-# Instrucciones y Guía Técnica para Agentes de IA — Proyecto FoodStore (TP2)
+# Instrucciones y Guía Técnica para Agentes de IA — Proyecto FoodStore
 
 Este documento establece el marco operativo y las restricciones técnicas obligatorias para guiar a los agentes de asistencia en el desarrollo, prueba y validación de scripts sobre el proyecto de base de datos PostgreSQL. Su propósito es prevenir errores comunes de sintaxis, violaciones de integridad y problemas de concurrencia.
 
@@ -6,10 +6,10 @@ Este documento establece el marco operativo y las restricciones técnicas obliga
 
 ## 1. Entorno de Trabajo y Especificaciones del Stack
 
-* **Base de datos de pruebas (Sandbox):** `foodstore_dev` (aislada de cualquier esquema de producción o plantilla original).
-* **Comando de creación en terminal:** `createdb -U postgres foodstore_dev`
-* **Aplicación de esquema:** `psql -U postgres -d foodstore_dev -f schema.sql`
-* **Naturaleza del repositorio:** Proyecto puramente de base de datos SQL. No cuenta con servidores de aplicación, ORMs ni frameworks de backend (como Node.js, Python o Django). Toda validación, prueba e inserción de datos se verifica mediante comandos y consultas directas en la terminal de `psql` o gestores compatibles (como DBeaver).
+- **Base de datos de pruebas (Sandbox):** `foodstore_dev` (aislada de cualquier esquema de producción o plantilla original).
+- **Comando de creación en terminal:** `createdb -U postgres foodstore_dev`
+- **Aplicación de esquema:** `psql -U postgres -d foodstore_dev -f schema.sql`
+- **Naturaleza del repositorio:** Proyecto puramente de base de datos SQL. No cuenta con servidores de aplicación, ORMs ni frameworks de backend (como Node.js, Python o Django). Toda validación, prueba e inserción de datos se verifica mediante comandos y consultas directas en la terminal de `psql` o gestores compatibles (como DBeaver).
 
 ---
 
@@ -19,14 +19,12 @@ Antes de confirmar o ejecutar cualquier script de Definición de Datos (DDL) o M
 
 1. **Aislamiento absoluto:** Todo script debe ejecutarse exclusivamente en la base de datos de desarrollo `foodstore_dev`.
 2. **Prueba transaccional preventiva:** Ninguna modificación o inserción se ejecuta directamente sin un contenedor transaccional de prueba. Se debe utilizar obligatoriamente el flujo de transacciones con `ROLLBACK` para inspeccionar errores de sintaxis y efectos colaterales antes de un `COMMIT`:
-```
-  BEGIN;
-  -- Bloque de código o inserción a probar
-  ROLLBACK;
+```PostgreSQL
+BEGIN;
+-- Bloque de código o inserción a probar
+ROLLBACK;
 
 ```
-
-
 
 ---
 
@@ -36,7 +34,7 @@ Los agentes de IA suelen omitir o infringir estas reglas estructurales al propon
 
 * **Columnas Autoincrementales (`IDENTITY`):**
 * Todas las claves primarias (`id_*`) se encuentran definidas mediante `GENERATED ALWAYS AS IDENTITY`.
-* *Error frecuente a evitar:* Intentar insertar un valor explícito en una clave primaria (ej: `INSERT INTO cliente (id_cliente, ...) VALUES (1, ...)`) generará un error directo en PostgreSQL, a menos que se anteprenda la cláusula `OVERRIDING SYSTEM VALUE`. Por defecto, se debe omitir la columna en el `INSERT` y dejar que el motor asigne el identificador automáticamente.
+* *Error frecuente a evitar:* Intentar insertar un valor explícito en una clave primaria (ej: `INSERT INTO cliente (id_cliente, ...) VALUES (1, ...)`) generará un error directo en PostgreSQL, a menos que se anteponga la cláusula `OVERRIDING SYSTEM VALUE`. Por defecto, se debe omitir la columna en el `INSERT` y dejar que el motor asigne el identificador automáticamente.
 
 
 * **Integridad Referencial y Cascada (`ON DELETE RESTRICT`):**
@@ -63,8 +61,40 @@ Los agentes de IA suelen omitir o infringir estas reglas estructurales al propon
 
 ---
 
-## 4. Enfoque Avanzado en Concurrencia y Transaccionalidad (TP2)
+## 4. Enfoque Avanzado en Concurrencia y Transaccionalidad
 
 * **Objetivo de la materia:** El foco central del proyecto reside en la gestión analítica de la concurrencia, el análisis de anomalías y la correcta utilización de los niveles de aislamiento definidos por el estándar SQL (`Read Committed`, `Repeatable Read`, `Serializable`).
 * **Mecanismos de bloqueo explícito:** Se debe dominar el uso de bloqueos a nivel de fila mediante cláusulas de control de concurrencia pesimista como `SELECT ... FOR UPDATE` y `SELECT ... FOR SHARE`.
 * **Metodología de prueba en paralelo:** Para simular escenarios reales de condiciones de carrera (por ejemplo, reservas simultáneas de stock o modificaciones concurrentes de precios), se deben abrir y mantener activas múltiples sesiones de terminal independientes en `psql`, ejecutando los pasos de las transacciones de forma intercalada (Sesión A y Sesión B).
+
+---
+
+## 5. Ámbito de Trabajo para la Unidad 5 (Administración y Seguridad)
+
+* **Aislamiento de la entrega:** Todo nuevo desarrollo, especificación de Kiro, script DDL (roles, permisos, auditoría, anonimización) e informe debe crearse **exclusivamente dentro de la carpeta `food-store-tp-u5/`**.
+
+
+* **Estructura obligatoria de la Unidad 5:**
+```text
+food-store-tp-u5/
+├── sql/
+│   ├── roles.sql
+│   ├── auditoria_test.sql
+│   ├── simulacro_incidente.sql
+│   └── usuario_anon.sql
+├── docs/
+│   ├── kiro_roles_spec/
+│   ├── informe_auditoria.md
+│   ├── log_auditoria_prueba.txt
+│   ├── log_simulacro_anonimizado.txt
+│   ├── informe_incidente.md
+│   └── verificacion_equivalencia.md
+└── BITACORA.md
+
+```
+
+
+* **Inmutabilidad del histórico:** Bajo ninguna circunstancia los agentes modificarán los archivos de la raíz del proyecto (`schema.sql`, `data.sql`, `queries.sql`, `views.sql`, etc.) salvo indicación humana explícita.
+
+
+* **Registro de asistencia IA:** Para esta unidad, la interacción con la IA se documentará **exclusivamente en `food-store-tp-u5/BITACORA.md**` respetando el formato de tabla de 3 columnas exigido por la cátedra.
