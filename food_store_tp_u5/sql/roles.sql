@@ -152,8 +152,9 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    -- Comparamos el hash almacenado con la contraseña provista
-    IF v_hash = crypt(p_pass, v_hash) THEN
+    -- Comparamos el hash almacenado con la contraseña provista.
+    -- Se verifica explícitamente que el hash no sea NULL (cliente sin contraseña registrada).
+    IF v_hash IS NOT NULL AND v_hash = crypt(p_pass, v_hash) THEN
         RETURN v_id;
     END IF;
 
@@ -224,28 +225,10 @@ GRANT SELECT ON categoria             TO rol_app_lectura;
 GRANT SELECT, INSERT, UPDATE ON pedido         TO rol_app_escritura;
 GRANT SELECT, INSERT, UPDATE ON detalle_pedido TO rol_app_escritura;
 
--- sp_crear_pedido: se busca por nombre en pg_proc para no depender de la firma exacta.
-DO $$
-DECLARE
-    p REGPROCEDURE;
-    n INT := 0;
-BEGIN
-    FOR p IN
-        SELECT oid::regprocedure
-        FROM   pg_proc
-        WHERE  proname      = 'sp_crear_pedido'
-          AND  pronamespace = 'public'::regnamespace
-    LOOP
-        EXECUTE format('REVOKE ALL ON ROUTINE %s FROM PUBLIC',              p);
-        EXECUTE format('GRANT EXECUTE ON ROUTINE %s TO rol_app_escritura',  p);
-        n := n + 1;
-    END LOOP;
-
-    IF n = 0 THEN
-        RAISE WARNING 'sp_crear_pedido no encontrado en public. '
-                      'Crear la rutina y re-ejecutar este script.';
-    END IF;
-END $$;
+-- sp_crear_pedido: firma explícita (definida en procedimientos.sql).
+-- Usar la firma exacta evita otorgar permisos a sobrecargas futuras accidentalmente.
+GRANT EXECUTE ON PROCEDURE sp_crear_pedido(BIGINT, forma_pago_enum, JSONB)
+    TO rol_app_escritura;
 
 
 -- ── rol_soporte ──────────────────────────────────────────────────────────────
@@ -259,14 +242,15 @@ GRANT SELECT (id_cliente, nombre, email) ON cliente TO rol_soporte;
 GRANT SELECT ON vw_pedidos_cliente_segura TO rol_soporte;
 
 -- Rutinas de gestión de credenciales:
+-- fn_autenticar se otorga SOLO a app_web (sección de app_web más abajo).
+-- rol_soporte no necesita autenticar clientes — eso es responsabilidad del backend.
 GRANT EXECUTE ON FUNCTION fn_resetear_password(BIGINT, TEXT) TO rol_soporte;
-GRANT EXECUTE ON FUNCTION fn_autenticar(TEXT, TEXT)          TO rol_soporte;
 
 
 -- ── rol_reportes ─────────────────────────────────────────────────────────────
 -- Objetivo: analítica sobre datos pre-calculados sin tocar tablas transaccionales.
-GRANT SELECT ON mv_facturacion_categoria_mes TO rol_reportes;
--- mv_ventas_categoria_diario: agregar aquí si se crea en el futuro.
+GRANT SELECT ON mv_facturacion_categoria_mes  TO rol_reportes;
+GRANT SELECT ON mv_ventas_categoria_diario    TO rol_reportes;
 
 
 -- ── app_web (login) ──────────────────────────────────────────────────────────
