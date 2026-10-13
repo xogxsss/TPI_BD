@@ -111,15 +111,20 @@ PK y Clave Candidata (o Identificador Único)
 Una tabla puede tener ambas: 
 - PK -> Usada como identificador interno de la BD para acceder a los datos. Es inmutable.
 - Clave Candidata -> Regla de negocio del mundo real. Cada cliente se identifica a través de su email.
-Es mutable (se recomienda buscar un dato que no cambie o que no cambie tanto, como el DNI, por ejemplo).
 */
 CREATE TABLE cliente (
-    id_cliente BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    id_cliente      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email           VARCHAR(255) NOT NULL UNIQUE,
     /* Requisito R6: Identificador único / Clave candidata */
-    nombre VARCHAR(100) NOT NULL,
-    telefono VARCHAR(20) NULL,
-    direccion VARCHAR(200) NOT NULL
+    nombre          VARCHAR(100) NOT NULL,
+    telefono        VARCHAR(20)  NULL,
+    direccion       VARCHAR(200) NOT NULL,
+    /*
+    Hash bcrypt de la contraseña del cliente (pgcrypto: crypt + gen_salt('bf')).
+    NULL mientras el cliente no registre credenciales.
+    Nunca se almacena la contraseña en texto plano.
+    */
+    contrasena_hash TEXT         NULL
 );
 
 /*
