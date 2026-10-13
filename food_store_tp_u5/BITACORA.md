@@ -20,3 +20,47 @@ El registro de uso de IA de las Unidades 1 a 4 está en `DUIA.md` (raíz del rep
 | **Parte C — Simulacro de incidente.** Diseñar y ejecutar un script con fuerza bruta via `fn_autenticar`, login exitoso, lectura masiva y escalamiento de privilegios. | Kiro generó `simulacro_incidente.sql`. En la primera ejecución, el GRANT de `admin_datos` se ejecutó como `postgres` (superusuario) y tuvo éxito — fue revertido y corregido con `SET ROLE app_web`. En la ejecución final el escalamiento falló correctamente. | Se documentó el error del primer intento como hallazgo esperado (el superusuario puede escalar cualquier rol). El escalamiento con `app_web` falló como corresponde. |
 | **Parte C — Reconstrucción por IA del log anonimizado.** Se entregó `log_simulacro_anonimizado.txt` sin contexto adicional. | Kiro identificó la secuencia correctamente pero afirmó que "todas las llamadas a `fn_autenticar` terminaron en ERROR" — sin detectar que el 4to intento fue exitoso a nivel lógico. También caracterizó la sesión como "un atacante" sin evidencia de acceso externo. | **Error de la IA documentado:** confundió un error interno de función (columna faltante) con un fallo de autenticación. El contraste completo y la decisión de contención se redactaron de forma independiente en `informe_incidente.md`. |
 | **Parte D — Anonimizacion de datos personales.** Construir `cliente_anon` con datos sinteticos deterministas y demostrar que los resultados agregados son equivalentes a los de la tabla real. | Kiro genero `usuario_anon.sql` con sustituciones deterministas para nombre, email, telefono y direccion (conservando `id_cliente` para mantener el JOIN con `pedido`). Propuso una consulta de equivalencia basada en distribucion por mes de primer pedido y rango de pedidos por cliente. | Se ejecuto el script. Verificacion de conteo: 20000 == 20000. Ambas consultas devolvieron los mismos 6 grupos. EXCEPT en ambas direcciones retorno 0 filas. Equivalencia confirmada. Evidencia adjunta en `verificacion_equivalencia.md`. |
+
+---
+
+## Caso mas significativo de error de la IA
+
+El error mas significativo ocurrio en la Parte C, durante la reconstruccion del log anonimizado.
+La IA recibio un fragmento de log donde `fn_autenticar` fallaba en cada llamada con el mensaje
+"no existe la columna c.contrasena_hash" — un error interno de la funcion, no de autenticacion.
+La IA concluyo que "todas las llamadas terminaron en ERROR" y que el atacante "no logro
+autenticarse", cuando en realidad el cuarto intento paso correctamente la logica de comparacion
+de contrasena y retorno el `id_cliente`. La IA confundio un error de implementacion con un
+fallo de autenticacion porque ambos producen la misma salida visible en el log: una linea de
+ERROR. La deteccion fue posible porque el equipo conocia el script ejecutado y sabia que la
+cuarta llamada usaba la contrasena correcta — conocimiento que el log por si solo no provee.
+Este caso ilustra el limite central de la auditoria basada en logs nativos: el log registra que
+algo fallo, pero no siempre permite distinguir por que fallo ni si, a pesar del error, el efecto
+buscado por el atacante se produjo de todas formas.
+
+---
+
+## Revision del historial de Git
+
+El historial refleja el avance por partes con mensajes legibles:
+
+```
+c2d9c67  docs(u5): agrega entrada Parte D a bitacora
+51298a1  feat(u5/parted): anonimizacion y verificacion de equivalencia
+95757bd  docs(u5): actualiza bitacora con partes B y C
+9e1dae0  style(u5): elimina todos los emojis de documentacion y specs
+e4339e5  feat(u5/partec): simulacro de incidente de seguridad
+cae68df  feat(u5/parteb): auditoria nativa PostgreSQL
+850e58d  fix(u5): corrige permisos y funciones segun auditoria
+65b53ea  docs(u5): specs, log de verificacion y bitacora de la Parte A
+89fa18a  feat(u5): agrega sp_crear_pedido, roles, permisos y funciones de seguridad
+0960d18  feat(schema): agrega contrasena_hash a tabla cliente
+```
+
+El historial es correcto. Cada commit corresponde a una unidad de trabajo identificable.
+
+Una cosa que se haria distinto: el commit `style(u5): elimina todos los emojis` no deberia
+existir — implica que los archivos se revisaron despues de commiteados. La convencion correcta
+es no commitear hasta verificar que el contenido cumple con los estandares del proyecto
+(sin emojis, sin contrasenas en texto plano, etc.). En la proxima entrega, la revision de
+formato seria parte del paso previo al `git add`, no un commit correctivo posterior.
