@@ -52,6 +52,15 @@ Para mantener la inmutabilidad de los scripts y pruebas consolidadas de las Unid
 - **`food_store_tp_u5/docs/`**: Documentación técnica de la unidad.
 - **`food_store_tp_u5/BITACORA.md`**: Bitácora de decisiones y cambios aplicados durante el desarrollo de la Unidad 5.
 
+#### Excepcion a la inmutabilidad: columna `contrasena_hash` en `schema.sql`
+
+La regla general del proyecto es que `schema.sql` y `data.sql` no se modifican una vez consolidados, para preservar la trazabilidad del trabajo de las Unidades 1 a 4. Durante la Unidad 5 se hizo una excepcion autorizada:
+
+- **Que se modifico:** se agrego la columna `contrasena_hash TEXT NULL` a la tabla `cliente` en `schema.sql`.
+- **Por que fue necesario:** las funciones `fn_autenticar` y `fn_resetear_password` del sistema de autenticacion de la Unidad 5 almacenan y comparan hashes bcrypt en esa columna. Si la columna no existe en el schema base, recrear la BD desde cero con `psql -f schema.sql` produce una base incompleta donde esas funciones fallan con error interno.
+- **Como se hizo:** modificacion directa del bloque DDL de `CREATE TABLE cliente` en `schema.sql`, con un comentario explicativo sobre bcrypt y almacenamiento seguro. No se altero ninguna otra tabla ni restriccion existente.
+- **Donde queda registrado:** commit `0960d18` (`feat(schema): agrega contrasena_hash a tabla cliente`), entrada en `food_store_tp_u5/BITACORA.md` y nota en `AGENTS.md` seccion 5.
+
 ---
 
 ## 3. Guía de Reproducción del Entorno

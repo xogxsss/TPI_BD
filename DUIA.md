@@ -83,7 +83,7 @@
 - **Spec o prompt utilizado**: _"Redactar una especificación precisa para dos consultas sobre Food Store: un ranking con función de ventana y una consulta con subconsulta correlacionada, especificando tablas, filtros de borrado lógico, columnas de salida y desempate. Generar dos versiones con estructuras distintas y sus respectivas pruebas de equivalencia con EXCEPT."_
 - **Qué generó**: Un script estructurado con especificaciones formales, dos versiones sintácticamente distintas para cada caso (ranking directo vs. CTE, y subconsulta correlacionada vs. JOIN con tabla derivada) y sus bloques de verificación cruzada mediante `EXCEPT`.
 - **Qué se aceptó**: La lógica general para la construcción de funciones de ventana con `RANK()`, el uso de `COALESCE` para el manejo de nulos, la aplicación de tablas derivadas/CTE y la sintaxis de los operadores de conjuntos para la prueba de equivalencia.
-- **Qué se modificó o descartó**: Se corrigieron errores iniciales respecto al esquema físico real de la base de datos, eliminando referencias a columnas de borrado lógico inexistentes (`activo`) en las tablas transaccionales (`pedido` y `cliente`) y limitándolas strictly a `producto` y `categoria`. Asimismo, se ajustaron alias en las columnas de salida (`nombre_completo`) para asegurar la compatibilidad exacta en las pruebas de comparación.
+- **Qué se modificó o descartó**: Se corrigieron errores iniciales respecto al esquema físico real de la base de datos, eliminando referencias a columnas de borrado lógico inexistentes (`activo`) en las tablas transaccionales (`pedido` y `cliente`) y limitándolas estrictamente a `producto` y `categoria`. Asimismo, se ajustaron alias en las columnas de salida (`nombre_completo`) para asegurar la compatibilidad exacta en las pruebas de comparación.
 - **Verificación realizada**: Ejecución y validación de los scripts en PostgreSQL, comprobando que las consultas devuelven los resultados esperados sin colapsar filas y que las pruebas de equivalencia con `EXCEPT` arrojan exactamente cero filas en ambas direcciones.
 
 ---
@@ -260,3 +260,8 @@
 
 * **Auditoría de consistencia:** La comparación mediante `EXCEPT` bidireccional entre las tablas operativas y la vista materializada devolvió `(0 rows)`, confirmando la ausencia de desincronización o inconsistencia de datos.
 * **Versionado:** Commit registrado en Git (`feat: creacion del script tp_desnormalizacion_top_categorias.sql para desnormalizacion controlada`).
+
+
+---
+
+> **Nota:** La DUIA correspondiente al TP7 (Unidad 5 — Administración y Seguridad) se desarrolla exclusivamente en `food_store_tp_u5/BITACORA.md`, siguiendo el formato de tabla de 3 columnas exigido por la cátedra para esa unidad.

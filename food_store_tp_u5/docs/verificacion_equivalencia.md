@@ -1,36 +1,36 @@
-# Verificacion de Equivalencia — Parte D
-## TP Unidad 5: Anonimizacion de Datos Personales
+# Verificación de Equivalencia — Parte D
+## TP Unidad 5: Anonimización de Datos Personales
 
 ---
 
 ## 1. Tabla anonimizada: cliente_anon
 
 La tabla `cliente_anon` se construye a partir de `cliente` aplicando sustituciones
-deterministas: para un mismo `id_cliente` siempre se genera el mismo valor sintetico,
+deterministas: para un mismo `id_cliente` siempre se genera el mismo valor sintético,
 lo que permite reproducir el script sin alterar los resultados agregados.
 
-| Columna original | Tecnica aplicada | Ejemplo resultado |
+| Columna original | Técnica aplicada | Ejemplo resultado |
 |---|---|---|
 | `nombre` | 'cliente_anon_' + id | cliente_anon_1 |
 | `email` | 'anon_' + id + '@anon.local' | anon_1@anon.local |
-| `telefono` | '000' + id con padding a 7 digitos | 0000000001 |
+| `telefono` | '000' + id con padding a 7 dígitos | 0000000001 |
 | `direccion` | 'Direccion Anonima ' + id | Direccion Anonima 1 |
 | `contrasena_hash` | NULL (no se expone ni el hash) | NULL |
 | `id_cliente` | Sin cambio (necesario para JOIN con pedido) | 1 |
 
-Verificacion de conteo post-creacion:
+Verificación de conteo post-creación:
 ```
-NOTICE: Verificacion OK: cliente=20000 filas, cliente_anon=20000 filas.
+NOTICE: Verificación OK: cliente=20000 filas, cliente_anon=20000 filas.
 ```
 
 ---
 
 ## 2. Consulta de equivalencia
 
-Pregunta de negocio: distribucion de clientes segun el mes de su primer pedido
+Pregunta de negocio: distribución de clientes según el mes de su primer pedido
 y el rango de volumen de actividad (cantidad de pedidos).
 
-Esta consulta permite analizar patrones de incorporacion y frecuencia de compra
+Esta consulta permite analizar patrones de incorporación y frecuencia de compra
 sin necesidad de acceder a ningún dato personal.
 
 ### Consulta A — tabla real (cliente)
@@ -61,8 +61,8 @@ ORDER BY 1, 2, 3;
 
 ### Consulta B — tabla anonimizada (cliente_anon)
 
-Identica en estructura; solo se reemplaza `cliente` por `cliente_anon`.
-El JOIN con `pedido` usa `id_cliente`, que se conservo sin alteracion.
+Idéntica en estructura; solo se reemplaza `cliente` por `cliente_anon`.
+El JOIN con `pedido` usa `id_cliente`, que se conservó sin alteración.
 
 ```sql
 SELECT
@@ -120,9 +120,9 @@ ORDER BY 1, 2, 3;
 (6 rows)
 ```
 
-Los resultados son identicos fila por fila.
+Los resultados son idénticos fila por fila.
 
-### Verificacion por EXCEPT (ambas direcciones)
+### Verificación por EXCEPT (ambas direcciones)
 
 ```
 -- Consulta A EXCEPT Consulta B:
@@ -136,19 +136,19 @@ Los resultados son identicos fila por fila.
 
 ---
 
-## 4. Informacion de Food Store que no debe salir sin anonimizar
+## 4. Información de Food Store que no debe salir sin anonimizar
 
-Los datos de la tabla `cliente` — nombre completo, email, telefono y direccion — son datos
+Los datos de la tabla `cliente` — nombre completo, email, teléfono y dirección — son datos
 personales directamente identificables amparados por la Ley 25.326 (Argentina) y el RGPD.
 Compartirlos con un asistente de IA expone a personas reales a riesgos de phishing, spam
-o ingenieria social, aun cuando el objetivo sea solo analizar patrones de compra.
+o ingeniería social, aun cuando el objetivo sea solo analizar patrones de compra.
 
-Tampoco debe salir `contrasena_hash`: aunque es un hash bcrypt y no la contrasena en
-texto plano, exponer hashes permite ataques de diccionario offline sin limite de intentos,
-especialmente si el atacante conoce el algoritmo y los parametros de sal.
+Tampoco debe salir `contrasena_hash`: aunque es un hash bcrypt y no la contraseña en
+texto plano, exponer hashes permite ataques de diccionario offline sin límite de intentos,
+especialmente si el atacante conoce el algoritmo y los parámetros de sal.
 
-El historial de pedidos combinado con datos de identificacion personal (nombre + email +
+El historial de pedidos combinado con datos de identificación personal (nombre + email +
 fecha + monto) es igualmente sensible: permite reconstruir perfiles de comportamiento
 individuales. Cualquier consulta que combine `cliente` con `pedido` o `detalle_pedido`
-debe pasar primero por la capa de anonimizacion antes de ser compartida fuera del
+debe pasar primero por la capa de anonimización antes de ser compartida fuera del
 entorno de desarrollo.

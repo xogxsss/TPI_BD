@@ -96,5 +96,11 @@ food-store-tp-u5/
 
 * **Inmutabilidad del histórico:** Bajo ninguna circunstancia los agentes modificarán los archivos de la raíz del proyecto (`schema.sql`, `data.sql`, `queries.sql`, `views.sql`, etc.) salvo indicación humana explícita.
 
+  > **Excepción registrada — Unidad 5 (autorizada por el equipo):**
+  > - **Qué:** se agregó la columna `contrasena_hash TEXT NULL` a la tabla `cliente` en `schema.sql`.
+  > - **Por qué:** las funciones `fn_autenticar` y `fn_resetear_password` definidas en la Unidad 5 dependen de esa columna para almacenar y comparar hashes bcrypt. Sin ella, el schema no es autosuficiente para recrear la BD desde cero y las funciones fallan con error interno.
+  > - **Cómo:** modificación directa del DDL de `cliente` en `schema.sql`, con comentario explicativo en el propio archivo.
+  > - **Dónde queda registrado:** commit `0960d18` (`feat(schema): agrega contrasena_hash a tabla cliente`) y entrada en `food_store_tp_u5/BITACORA.md`.
+
 
 * **Registro de asistencia IA:** Para esta unidad, la interacción con la IA se documentará **exclusivamente en `food-store-tp-u5/BITACORA.md**` respetando el formato de tabla de 3 columnas exigido por la cátedra.
