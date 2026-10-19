@@ -2,79 +2,60 @@
 
 Este documento establece el marco operativo y las restricciones técnicas obligatorias para guiar a los agentes de asistencia en el desarrollo, prueba y validación de scripts sobre el proyecto de base de datos PostgreSQL. Su propósito es prevenir errores comunes de sintaxis, violaciones de integridad y problemas de concurrencia.
 
----
-
-## 1. Entorno de Trabajo y Especificaciones del Stack
+### 1. Entorno de Trabajo y Especificaciones del Stack
 
 - **Base de datos de pruebas (Sandbox):** `foodstore_dev` (aislada de cualquier esquema de producción o plantilla original).
 - **Comando de creación en terminal:** `createdb -U postgres foodstore_dev`
 - **Aplicación de esquema:** `psql -U postgres -d foodstore_dev -f schema.sql`
 - **Naturaleza del repositorio:** Proyecto puramente de base de datos SQL. No cuenta con servidores de aplicación, ORMs ni frameworks de backend (como Node.js, Python o Django). Toda validación, prueba e inserción de datos se verifica mediante comandos y consultas directas en la terminal de `psql` o gestores compatibles (como DBeaver).
 
----
-
-## 2. Protocolo de Seguridad Operativa e Ineludible
+### 2. Protocolo de Seguridad Operativa e Ineludible
 
 Antes de confirmar o ejecutar cualquier script de Definición de Datos (DDL) o Manipulación de Datos (DML) generado por herramientas de asistencia:
 
 1. **Aislamiento absoluto:** Todo script debe ejecutarse exclusivamente en la base de datos de desarrollo `foodstore_dev`.
 2. **Prueba transaccional preventiva:** Ninguna modificación o inserción se ejecuta directamente sin un contenedor transaccional de prueba. Se debe utilizar obligatoriamente el flujo de transacciones con `ROLLBACK` para inspeccionar errores de sintaxis y efectos colaterales antes de un `COMMIT`:
+
 ```PostgreSQL
 BEGIN;
 -- Bloque de código o inserción a probar
 ROLLBACK;
 
+
 ```
 
----
+### 3. Restricciones Críticas y Reglas del Esquema (`schema.sql`)
 
-## 3. Restricciones Críticas y Reglas del Esquema (`schema.sql`)
-
-Los agentes de IA suelen omitir o infringir estas reglas estructurales al proponer consultas o datos de prueba. Deben respetarse estrictamente:
+Los agentes de IA suelen omitir o infringir estas reglas estructurales al proponer consultas o datos de prueba. Deben respetarse strictly:
 
 * **Columnas Autoincrementales (`IDENTITY`):**
 * Todas las claves primarias (`id_*`) se encuentran definidas mediante `GENERATED ALWAYS AS IDENTITY`.
 * *Error frecuente a evitar:* Intentar insertar un valor explícito en una clave primaria (ej: `INSERT INTO cliente (id_cliente, ...) VALUES (1, ...)`) generará un error directo en PostgreSQL, a menos que se anteponga la cláusula `OVERRIDING SYSTEM VALUE`. Por defecto, se debe omitir la columna en el `INSERT` y dejar que el motor asigne el identificador automáticamente.
-
-
 * **Integridad Referencial y Cascada (`ON DELETE RESTRICT`):**
 * Todas las claves foráneas del esquema tienen configurada una política restrictiva de borrado (`ON DELETE RESTRICT`).
 * *Error frecuente a evitar:* Intentar eliminar un registro padre (como una categoría, un cliente, un producto o un pedido principal) que posea registros hijos asociados fallará por violación de llave foránea. Es obligatorio limpiar o eliminar primero los registros dependientes.
-
-
 * **Tipos de Datos Enumerados (`forma_pago_enum`):**
 * El dominio de formas de pago acepta exclusivamente los valores literales: `'EFECTIVO'`, `'TARJETA'`, `'TRANSFERENCIA'`.
 * *Error frecuente a evitar:* Los tipos `ENUM` en PostgreSQL son estrictamente sensibles a mayúsculas y minúsculas. Enviar variaciones como `'efectivo'` o `'Tarjeta'` provocará un rechazo inmediato por parte del motor.
-
-
 * **Restricciones de Verificación lógicas (`CHECK`):**
 * `chk_producto_stock`: El stock del producto debe ser mayor o igual a cero (`stock >= 0`).
 * `chk_producto_precio`: El precio de lista debe ser mayor o igual a cero (`precio_lista >= 0`).
 * `chk_detalle_cantidad`: La cantidad en el detalle del pedido es **estrictamente mayor a cero** (`cantidad > 0`). Ingresar un valor de `cantidad = 0` o negativo disparará un error de validación.
 * `chk_detalle_precio`: El precio unitario histórico registrado en el detalle debe ser mayor o igual a cero.
-
-
 * **Manejo de Fechas y Marcas de Tiempo (`TIMESTAMPTZ`):**
 * Todas las columnas temporales emplean tipos con zona horaria (`TIMESTAMPTZ`). Se deben utilizar funciones compatibles como `now()` o literales de intervalo precisos al simular transacciones o cargas de pedidos.
 
-
-
----
-
-## 4. Enfoque Avanzado en Concurrencia y Transaccionalidad
+### 4. Enfoque Avanzado en Concurrencia y Transaccionalidad
 
 * **Objetivo de la materia:** El foco central del proyecto reside en la gestión analítica de la concurrencia, el análisis de anomalías y la correcta utilización de los niveles de aislamiento definidos por el estándar SQL (`Read Committed`, `Repeatable Read`, `Serializable`).
 * **Mecanismos de bloqueo explícito:** Se debe dominar el uso de bloqueos a nivel de fila mediante cláusulas de control de concurrencia pesimista como `SELECT ... FOR UPDATE` y `SELECT ... FOR SHARE`.
 * **Metodología de prueba en paralelo:** Para simular escenarios reales de condiciones de carrera (por ejemplo, reservas simultáneas de stock o modificaciones concurrentes de precios), se deben abrir y mantener activas múltiples sesiones de terminal independientes en `psql`, ejecutando los pasos de las transacciones de forma intercalada (Sesión A y Sesión B).
 
----
+### 5. Ámbito de Trabajo para la Unidad 5 (Administración y Seguridad)
 
-## 5. Ámbito de Trabajo para la Unidad 5 (Administración y Seguridad)
-
-* **Aislamiento de la entrega:** Todo nuevo desarrollo, especificación de Kiro, script DDL (roles, permisos, auditoría, anonimización) e informe debe crearse **exclusivamente dentro de la carpeta `food-store-tp-u5/`**.
-
-
+* **Aislamiento de la entrega:** Todo nuevo desarrollo, especificación de Kiro, script DDL (roles, permisos, auditoría, anonimización) e informe debe crearse **exclusivamente dentro de la carpeta `food-store-tp-u5/**`.
 * **Estructura obligatoria de la Unidad 5:**
+
 ```text
 food-store-tp-u5/
 ├── sql/
@@ -91,16 +72,35 @@ food-store-tp-u5/
 │   └── verificacion_equivalencia.md
 └── BITACORA.md
 
+
 ```
 
-
 * **Inmutabilidad del histórico:** Bajo ninguna circunstancia los agentes modificarán los archivos de la raíz del proyecto (`schema.sql`, `data.sql`, `queries.sql`, `views.sql`, etc.) salvo indicación humana explícita.
-
-  > **Excepción registrada — Unidad 5 (autorizada por el equipo):**
-  > - **Qué:** se agregó la columna `contrasena_hash TEXT NULL` a la tabla `cliente` en `schema.sql`.
-  > - **Por qué:** las funciones `fn_autenticar` y `fn_resetear_password` definidas en la Unidad 5 dependen de esa columna para almacenar y comparar hashes bcrypt. Sin ella, el schema no es autosuficiente para recrear la BD desde cero y las funciones fallan con error interno.
-  > - **Cómo:** modificación directa del DDL de `cliente` en `schema.sql`, con comentario explicativo en el propio archivo.
-  > - **Dónde queda registrado:** commit `0960d18` (`feat(schema): agrega contrasena_hash a tabla cliente`) y entrada en `food_store_tp_u5/BITACORA.md`.
+> **Excepción registrada — Unidad 5 (autorizada por el equipo):**
+> * **Qué:** se agregó la columna `contrasena_hash TEXT NULL` a la tabla `cliente` en `schema.sql`.
+> * **Por qué:** las funciones `fn_autenticar` y `fn_resetear_password` definidas en la Unidad 5 dependen de esa columna para almacenar y comparar hashes bcrypt. Sin ella, el schema no es autosuficiente para recrear la BD desde cero y las funciones fallan con error interno.
+> * **Cómo:** modificación directa del DDL de `cliente` en `schema.sql`, con comentario explicativo en el propio archivo.
+> * **Dónde queda registrado:** commit `0960d18` (`feat(schema): agrega contrasena_hash a tabla cliente`) y entrada en `food_store_tp_u5/BITACORA.md`.
+> 
+> 
 
 
 * **Registro de asistencia IA:** Para esta unidad, la interacción con la IA se documentará **exclusivamente en `food-store-tp-u5/BITACORA.md**` respetando el formato de tabla de 3 columnas exigido por la cátedra.
+
+### 6. Unidad 6: Mantenimiento y Automatización
+
+* **Entorno de Ejecución:** Windows, PowerShell desde la CLI integrada de VS Code / Kiro.
+* **Motor de BD:** PostgreSQL 17.11.
+* **Bases de Datos:**
+* `foodstore`: Base de datos principal (producción).
+* `foodstore_restore_test`: Base de datos auxiliar / descartable para pruebas de restauración.
+
+
+* **Identidad y Permisos:** Operaciones ejecutadas exclusivamente con el rol `admin_datos` (propietario de los objetos).
+* **Uso de Herramientas de Mantenimiento:** Se descarta el uso de `pg_maintain`.
+> **Aclaración:** No se utiliza `pg_maintain` por no ser una herramienta nativa del core de PostgreSQL, por el riesgo de generar bloqueos exclusivos (`locks`) e impacto desmedido en I/O sobre la base principal, y para priorizar el mantenimiento nativo vía `Autovacuum` junto con scripts de PowerShell auditables y bajo control directo.
+
+
+* **Manejo de Credenciales:** Prohibido incluir contraseñas en texto plano dentro de scripts (`.ps1`/`.sql`). Se utiliza autenticación automática mediante `%APPDATA%\postgresql\pgpass.conf`.
+* **Seguridad Operativa:** Queda strictly prohibido ejecutar `DROP DATABASE foodstore` o cualquier script destructivo sobre la base principal.
+* **Manejo de Errores y Logging:** Todo script de PowerShell debe auditar `$LASTEXITCODE` tras invocar binarios externos (`pg_dump.exe`, `pg_restore.exe`, `psql.exe`), abortar inmediatamente ante cualquier código distinto de 0 y registrar el resultado (OK/ERROR) en los archivos de log.
