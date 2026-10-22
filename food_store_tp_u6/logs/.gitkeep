@@ -1,0 +1,2 @@
+.gitkeep es un archivo de texto normalmente vacío. Ayuda a que Git conserve la carpeta `logs/`
+cuando no contiene otros archivos.
