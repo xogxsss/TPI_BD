@@ -6,6 +6,7 @@
 **Base de datos de desarrollo (Sandbox):** foodstore_dev
 
 ---
+<br>
 
 ## 1. Descripción del Proyecto
 
@@ -14,6 +15,7 @@ Este repositorio contiene el trabajo práctico integrador sobre la base de datos
 El proyecto abarca el ciclo completo de ingeniería sobre la base de datos: modelado DDL, cargas masivas con datos sintéticos generados con semilla, diagnósticos con `EXPLAIN ANALYZE`, control de concurrencia y aislamiento transaccional (MVCC), y configuración de seguridad por roles.
 
 ---
+<br>
 
 ## 2. Estructura y Componentes del Repositorio
 
@@ -61,7 +63,38 @@ La regla general del proyecto es que `schema.sql` y `data.sql` no se modifican u
 - **Como se hizo:** modificacion directa del bloque DDL de `CREATE TABLE cliente` en `schema.sql`, con un comentario explicativo sobre bcrypt y almacenamiento seguro. No se altero ninguna otra tabla ni restriccion existente.
 - **Donde queda registrado:** commit `0960d18` (`feat(schema): agrega contrasena_hash a tabla cliente`), entrada en `food_store_tp_u5/BITACORA.md` y nota en `AGENTS.md` seccion 5.
 
+### Unidad 6 — Mantenimiento y Automatización (food_store_tp_u6/)
+
+Esta unidad abarca el plan de mantenimiento automatizado, los respaldos lógicos, el monitoreo de salud y las pruebas de restauración con PostgreSQL 17 en PowerShell. La estructura actual separa la especificación, los scripts, los respaldos y las evidencias:
+
+```text
+food_store_tp_u6/
+├── BITACORA_U6.md             <-- Registro de decisiones, cambios y validaciones
+├── scripts/                   <-- TODOS LOS SCRIPTS AUTOMATIZADOS
+│   ├── backup_foodstore.ps1    <-- Respaldo diario en PowerShell
+│   ├── restore_test.ps1       <-- Prueba semanal de restauración en PowerShell
+│   ├── health_check.sql       <-- Monitoreo diario de la base
+│   ├── health_check_pre.sql   <-- Chequeo inicial de integridad
+│   ├── maintenance.sql        <-- Revisión de autovacuum y ANALYZE condicional
+│   └── setup_ownership.sql    <-- Transferencia de propiedad de objetos
+├── backups/                   <-- Respaldo custom y checksum SHA-256
+│   ├── foodstore_dev_<fecha_hora>.dump
+│   └── foodstore_dev_<fecha_hora>.dump.sha256
+├── docs/                      <-- Especificaciones
+│   └── kiro_maintain_specs/
+│       └── SPEC_U6.md
+└── logs/                      <-- Logs de ejecuciones y evidencias
+    ├── .gitkeep
+    ├── log_backup_foodstore_dev_<fecha_hora>.txt
+    ├── log_health_check.txt
+    ├── log_health_check_pre.txt
+    ├── log_maintenance.txt
+    ├── log_restore_test_<fecha_hora>.txt
+    └── log_setup_ownership.txt
+```
+
 ---
+<br>
 
 ## 3. Guía de Reproducción del Entorno
 
@@ -191,6 +224,7 @@ Al final del script hay dos pruebas, cada una dentro de `BEGIN ... ROLLBACK`, qu
 `informe_concurrencia.md` documenta las pruebas de anomalías transaccionales (Non-Repeatable Read, Lock Wait y Phantom Read). Para reproducirlas, abrir dos terminales con `psql` conectadas a `foodstore_dev` (Sesión A y Sesión B) y ejecutar los pasos del informe de forma intercalada, en el orden indicado.
 
 ---
+<br>
 
 ## 4. Protocolo de Seguridad Operativa
 

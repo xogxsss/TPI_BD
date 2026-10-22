@@ -89,18 +89,41 @@ food-store-tp-u5/
 
 ### 6. Unidad 6: Mantenimiento y Automatización
 
-* **Entorno de Ejecución:** Windows, PowerShell desde la CLI integrada de VS Code / Kiro.
+* **Entorno de Ejecución:** Windows x86_64, PowerShell desde la CLI integrada de VS Code / Kiro.
 * **Motor de BD:** PostgreSQL 17.11.
 * **Bases de Datos:**
-* `foodstore`: Base de datos principal (producción).
-* `foodstore_restore_test`: Base de datos auxiliar / descartable para pruebas de restauración.
-
-
+  * `foodstore`: Base de datos principal (producción).
+  * `foodstore_restore_test`: Base de datos auxiliar / descartable para pruebas de restauración.
 * **Identidad y Permisos:** Operaciones ejecutadas exclusivamente con el rol `admin_datos` (propietario de los objetos).
 * **Uso de Herramientas de Mantenimiento:** Se descarta el uso de `pg_maintain`.
-> **Aclaración:** No se utiliza `pg_maintain` por no ser una herramienta nativa del core de PostgreSQL, por el riesgo de generar bloqueos exclusivos (`locks`) e impacto desmedido en I/O sobre la base principal, y para priorizar el mantenimiento nativo vía `Autovacuum` junto con scripts de PowerShell auditables y bajo control directo.
-
-
+  > **Aclaración:** No se utiliza `pg_maintain` por no ser una herramienta nativa del core de PostgreSQL, por el riesgo de generar bloqueos exclusivos (`locks`) e impacto desmedido en I/O sobre la base principal, y para priorizar el mantenimiento nativo vía `Autovacuum` junto con scripts de PowerShell auditables y bajo control directo.
 * **Manejo de Credenciales:** Prohibido incluir contraseñas en texto plano dentro de scripts (`.ps1`/`.sql`). Se utiliza autenticación automática mediante `%APPDATA%\postgresql\pgpass.conf`.
-* **Seguridad Operativa:** Queda strictly prohibido ejecutar `DROP DATABASE foodstore` o cualquier script destructivo sobre la base principal.
-* **Manejo de Errores y Logging:** Todo script de PowerShell debe auditar `$LASTEXITCODE` tras invocar binarios externos (`pg_dump.exe`, `pg_restore.exe`, `psql.exe`), abortar inmediatamente ante cualquier código distinto de 0 y registrar el resultado (OK/ERROR) en los archivos de log.
+* **Seguridad Operativa:** Queda estrictamente prohibido ejecutar `DROP DATABASE foodstore` o cualquier script destructivo sobre la base principal.
+* **Manejo de Errores y Logging:** Todo script de PowerShell debe auditar `$LASTEXITCODE` tras invocar binarios externos (`pg_dump.exe`, `pg_restore.exe`, `psql.exe`), abortar inmediatamente ante cualquier código distinto de 0 y registrar el resultado (OK/ERROR) en `food_store_tp_u6/logs/`.
+* **Estructura Interna de la Carpeta `food_store_tp_u6/`:**
+
+  ```text
+  food_store_tp_u6/
+  ├── BITACORA_U6.md             <-- Registro de decisiones, cambios y validaciones
+  ├── scripts/                   <-- TODOS LOS SCRIPTS AUTOMATIZADOS
+  │   ├── backup_foodstore.ps1    <-- Respaldo diario en PowerShell
+  │   ├── restore_test.ps1       <-- Prueba semanal de restauración en PowerShell
+  │   ├── health_check.sql       <-- Monitoreo diario de la base
+  │   ├── health_check_pre.sql   <-- Chequeo inicial de integridad
+  │   ├── maintenance.sql        <-- Revisión de autovacuum y ANALYZE condicional
+  │   └── setup_ownership.sql    <-- Transferencia de propiedad de objetos
+  ├── backups/                   <-- Respaldo custom y checksum SHA-256
+  │   ├── foodstore_dev_<fecha_hora>.dump
+  │   └── foodstore_dev_<fecha_hora>.dump.sha256
+  ├── docs/                      <-- Especificaciones
+  │   └── kiro_maintain_specs/
+  │       └── SPEC_U6.md
+  └── logs/                      <-- Logs de ejecuciones y evidencias
+      ├── .gitkeep
+      ├── log_backup_foodstore_dev_<fecha_hora>.txt
+      ├── log_health_check.txt
+      ├── log_health_check_pre.txt
+      ├── log_maintenance.txt
+      ├── log_restore_test_<fecha_hora>.txt
+      └── log_setup_ownership.txt
+  ```
